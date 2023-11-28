@@ -2,9 +2,9 @@ export function summariesToCSV(summary_results) {
     var csv_data = [];
     console.log("summary_results", summary_results);
     csv_data.push('"Section","Name","Severity","Description","Count","Percentage","Details"');
-    issue_keys = Object.keys(summary_results);
+    var issue_keys = Object.keys(summary_results);
     console.log("issue_keys", issue_keys);
-    for (i = 0; i < issue_keys.length; i++) {
+    for (var i = 0; i < issue_keys.length; i++) {
         var csv_row = [];
         var result = summary_results[issue_keys[i]];
         if (i == 1) {
@@ -38,7 +38,7 @@ export function detailsToCSV() {
 }
 
 function downloadCSVFile(csv_data, filename) {
-    CSVFile = new Blob([csv_data], {
+    var CSVFile = new Blob([csv_data], {
         type: "text/csv"
     });
     var temp_link = document.createElement('a');

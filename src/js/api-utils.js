@@ -40,7 +40,7 @@ async function d2Post(endpoint, body) {
 export async function fetchUpdatedCachedResults() {
     console.log("Fetching updated cached results");
     const endpoint = "dataIntegrity/summary";
-    cached_data = await d2Fetch(endpoint);
+    var cached_data = await d2Fetch(endpoint);
     Promise.all([cached_data])
         .then(console.log("Executed summary results")).
         catch((err) => {
@@ -173,7 +173,7 @@ export function runDetails(code) {
             currentDetails = this_check;
             var this_html = renderDetailsTable(this_check);
             $("#detailsReport").html(this_html);
-            new DataTable("#details", { "paging": true, "searching": true, order: [[1, 'asc']] });
+            $("#details").DataTable({ "paging": true, "searching": true, order: [[1, 'asc']] });
         })
         .catch(error => {
             console.error("Error in runDetails:", error);

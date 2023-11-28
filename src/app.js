@@ -9,9 +9,14 @@ import DataTable from "datatables.net";
 window.DataTable = DataTable;
 import {getContextPath} from "./js/utils.js";
 import { fetchUpdatedCachedResults } from "./js/api-utils.js";
+import { runIntegrityChecks } from "./js/api-utils.js";
+import { runDetails } from "./js/api-utils.js";
 import "./js/api-utils.js";
-import "./js/csv-utils.js";
-import "./js/html-utils.js";
+import {summariesToCSV} from "./js/csv-utils.js";
+import {detailsToCSV} from "./js/csv-utils.js";
+import {renderSummariesTable} from "./js/html-utils.js";
+import { renderDetailsTable } from "./js/html-utils.js";
+
 
 //CSS
 import "./css/style.css";
@@ -30,3 +35,15 @@ var dataIntegritySummaryResults = [];
 var currentDetails = [];
 var baseUrl = getContextPath() + "/api/";
 console.log("Baseurl is : ", baseUrl);
+window.baseUrl = baseUrl;
+window.dataIntegritySummaryResults = dataIntegritySummaryResults;
+window.jobSummary = jobSummary;
+window.currentDetails = currentDetails;
+window.fetchUpdatedCachedResults = fetchUpdatedCachedResults;
+window.renderSummariesTable = renderSummariesTable;
+window.runIntegrityChecks = runIntegrityChecks;
+window.DataTable = DataTable;
+window.runDetails = runDetails;
+window.renderDetailsTable = renderDetailsTable;
+window.summariesToCSV = summariesToCSV;
+window.detailsToCSV = detailsToCSV;

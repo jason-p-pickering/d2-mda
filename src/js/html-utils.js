@@ -1,4 +1,4 @@
-function renderSummariesTable(summaryObject) {
+export function renderSummariesTable(summaryObject) {
     console.log("Rendering summary table")
     const checks_name = Object.keys(summaryObject);
 
@@ -6,7 +6,7 @@ function renderSummariesTable(summaryObject) {
     html += "<table id='summary' class='display' width='100%'>";
     html += "<thead><tr><th>Section</th><th>Integrity check</th><th>Severity</th><th>Count</th><th>Percentage</th><th>Details</th></tr></thead><tbody>";
 
-    for (i = 0; i < checks_name.length; i++) {
+    for (var i = 0; i < checks_name.length; i++) {
         var this_key = checks_name[i];
         var result = summaryObject[this_key];
         html += "<tr>";
@@ -21,11 +21,12 @@ function renderSummariesTable(summaryObject) {
     html = html + "</tbody></table></div>"
 
     $("#summaryTable").html(html);
-    new DataTable("#summary", { "paging": true, "searching": true, order: [[1, 'asc']] });
+    $("#summary").DataTable({ "paging": true, "searching": true, order: [[1, 'asc']] });
+   //new DataTable("#summary", { "paging": true, "searching": true, order: [[1, 'asc']] });
 
 };
 
-function renderDetailsTable(detailsObject) {
+export function renderDetailsTable(detailsObject) {
 
     var html = "<div id='details_table'><h2>Details</h2>";
     html += "<h3>Issue: " + detailsObject.displayName + "</h3>";
