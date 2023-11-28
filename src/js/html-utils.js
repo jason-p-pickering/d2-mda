@@ -1,3 +1,4 @@
+//* global $, DataTable *//
 export function renderSummariesTable(summaryObject) {
     console.log("Rendering summary table")
     const checks_name = Object.keys(summaryObject);
@@ -20,11 +21,11 @@ export function renderSummariesTable(summaryObject) {
     }
     html = html + "</tbody></table></div>"
 
-    $("#summaryTable").html(html);
-    $("#summary").DataTable({ "paging": true, "searching": true, order: [[1, 'asc']] });
-   //new DataTable("#summary", { "paging": true, "searching": true, order: [[1, 'asc']] });
+    $("#summaryTable").html(html); // eslint-disable-line no-undef
+    $("#summary").DataTable({ "paging": true, "searching": true, order: [[1, 'asc']] }); // eslint-disable-line no-undef
 
-};
+
+}
 
 export function renderDetailsTable(detailsObject) {
 

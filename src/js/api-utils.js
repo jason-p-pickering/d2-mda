@@ -1,9 +1,9 @@
-'use strict';
+"use strict";
 
 //Fetch async from API
+/* global $ baseUrl */
 async function d2Fetch(endpoint) {
     return new Promise(function (resolve, reject) {
-        'use strict';
         $.ajax({
             "type": "GET",
             "url": baseUrl + endpoint,
@@ -12,31 +12,14 @@ async function d2Fetch(endpoint) {
                 resolve(data);
             },
             "error": function (err) {
-                console.log(err)
+                console.log(err);
                 reject(false);
             }
         });
     });
 }
 
-async function d2Post(endpoint, body) {
-    return new Promise(function (resolve, reject) {
-        $.ajax({
-            "type": "POST",
-            "url": baseUrl + endpoint,
-            "dataType": "json",
-            "data": body,
-            "success": function (data) {
-                resolve(data);
-            },
-            "error": function (err) {
-                console.log(err)
-                reject(false);
-            }
-        });
-    });
-}
-
+/* global renderSummariesTable */
 export async function fetchUpdatedCachedResults() {
     console.log("Fetching updated cached results");
     const endpoint = "dataIntegrity/summary";
@@ -54,24 +37,24 @@ export function fetchAllSummaries() {
     const path = "dataIntegrity/summary";
     return new Promise((resolve, reject) => {
         fetch(baseUrl + path, {
-            method: 'POST',
-            credentials: 'same-origin',
-            redirect: 'follow',
+            method: "POST",
+            credentials: "same-origin",
+            redirect: "follow",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
         })
             .then(response => response.json())
-            .then(data => {
+            .then(() => {
                 let tries = 0;
 
                 function checkForResponse() {
                     fetch(baseUrl + path, {
-                        method: 'GET',
-                        credentials: 'same-origin',
-                        redirect: 'follow',
+                        method: "GET",
+                        credentials: "same-origin",
+                        redirect: "follow",
                         headers: {
-                            'Content-Type': 'application/json',
+                            "Content-Type": "application/json",
                         },
                     })
                         .then(response => response.json())
@@ -89,7 +72,7 @@ export function fetchAllSummaries() {
                             }
                         })
                         .catch(error => {
-                            console.error('Error checking for response:', error);
+                            console.error("Error checking for response:", error);
                             reject(error);
                         });
                 }
@@ -97,14 +80,16 @@ export function fetchAllSummaries() {
                 checkForResponse();
             })
             .catch(error => {
-                console.error('Error making POST request:', error);
+                console.error("Error making POST request:", error);
                 reject(error);
             });
     });
 }
 
+/* global dataIntegritySummaryResults */
 export async function runIntegrityChecks() {
 
+    // eslint-disable-next-line no-global-assign
     dataIntegritySummaryResults = await fetchAllSummaries();
     Promise.all([dataIntegritySummaryResults])
         .then(console.log("Executed summary results")).
@@ -119,24 +104,24 @@ export async function runIntegrityChecks() {
 function performPostAndGet(baseUrl, path) {
     return new Promise((resolve, reject) => {
         fetch(baseUrl + path, {
-            method: 'POST',
-            credentials: 'same-origin',
-            redirect: 'follow',
+            method: "POST",
+            credentials: "same-origin",
+            redirect: "follow",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
         })
             .then(response => response.json())
-            .then(data => {
+            .then(() => {
                 let tries = 0;
 
                 function checkForResponse() {
                     fetch(baseUrl + path, {
-                        method: 'GET',
-                        credentials : 'same-origin',
-                        redirect: 'follow',
+                        method: "GET",
+                        credentials : "same-origin",
+                        redirect: "follow",
                         headers: {
-                            'Content-Type': 'application/json',
+                            "Content-Type": "application/json",
                         },
                     })
                         .then(response => response.json())
@@ -149,7 +134,7 @@ function performPostAndGet(baseUrl, path) {
                             }
                         })
                         .catch(error => {
-                            console.error('Error checking for response:', error);
+                            console.error("Error checking for response:", error);
                             reject(error);
                         });
                 }
@@ -157,12 +142,12 @@ function performPostAndGet(baseUrl, path) {
                 checkForResponse();
             })
             .catch(error => {
-                console.error('Error making POST request:', error);
+                console.error("Error making POST request:", error);
                 reject(error);
             });
     });
 }
-
+/* global renderDetailsTable */
 export function runDetails(code) {
     var path = "dataIntegrity/details?checks=" + code;
     performPostAndGet(baseUrl, path)
@@ -170,10 +155,11 @@ export function runDetails(code) {
             const name = Object.keys(data)[0];
             var this_check = data[name];
             //Put this in a global variable so we can access it later
+            // eslint-disable-next-line no-unused-vars, no-undef
             currentDetails = this_check;
             var this_html = renderDetailsTable(this_check);
             $("#detailsReport").html(this_html);
-            $("#details").DataTable({ "paging": true, "searching": true, order: [[1, 'asc']] });
+            $("#details").DataTable({ "paging": true, "searching": true, order: [[1, "asc"]] });
         })
         .catch(error => {
             console.error("Error in runDetails:", error);

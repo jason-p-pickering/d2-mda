@@ -1,5 +1,5 @@
 const dhisDevConfig = DHIS_CONFIG; // eslint-disable-line
-const isDev = dhisDevConfig.hasOwnProperty("baseUrl") ? true : false;
+const isDev = dhisDevConfig.hasOwnProperty("baseUrl") ? true : false; // eslint-disable-line
 const baseUrl = isDev ? dhisDevConfig.baseUrl : "../../..";
 
 import $ from "jquery";

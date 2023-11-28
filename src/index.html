@@ -16,7 +16,7 @@
             </div>
         </div>
         </a>
-        <p class="headerBarTitle">App skeleton for dummies</p>
+        <p class="headerBarTitle">Metadata integrity checks</p>
         <button class="headerBarExit" onclick="location.href='../../..';">Exit</button>
     </div>
 
@@ -27,13 +27,13 @@
             <table>
                 <tr>
                     <td>
-                        <button onclick="fetchUpdatedCachedResults()">Fetch new results</button>
-                    </td>
-                    <td>
                         <button onclick="runIntegrityChecks()">Run integrity checks</button>
                     </td>
                     <td>
-                        <button onclick="summariesToCSV(dataIntegritySummaryResults)">Download Summary CSV</button>
+                        <button onclick="fetchUpdatedCachedResults()">Fetch summaries</button>
+                    </td>
+                    <td>
+                        <button onclick="summariesToCSV(dataIntegritySummaryResults)">Download summary CSV</button>
                     </td>
                 </tr>
             </table>

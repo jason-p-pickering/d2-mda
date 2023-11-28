@@ -21,7 +21,7 @@ export function summariesToCSV(summary_results) {
     csv_data = csv_data.join('\n');
     downloadCSVFile(csv_data, "metdata_integrity_summary");
 }
-
+/* global currentDetails */
 export function detailsToCSV() {
     var csv_data = [];
     console.log("currentDetails", currentDetails);
