@@ -1,33 +1,26 @@
 module.exports = {
     "env": {
         "browser": true,
-        "es6": true
+        "es2021": true
     },
     "extends": "eslint:recommended",
+    "overrides": [
+        {
+            "env": {
+                "node": true
+            },
+            "files": [
+                ".eslintrc.{js,cjs}"
+            ],
+            "parserOptions": {
+                "sourceType": "script"
+            }
+        }
+    ],
     "parserOptions": {
-        "sourceType": "module",
-		"ecmaVersion": 9
+        "ecmaVersion": "latest",
+        "sourceType": "module"
     },
     "rules": {
-		"indent": [
-			"error",
-			4
-		],
-		"quotes": [
-			"error",
-			"double"
-		],
-		"semi": [
-			"error",
-			"always"
-		],
-		"no-console": "off"
-	},
-	"globals": {
-		"require": true,
-		"__dirname": true,
-		"process": true,
-		"module": true,
-		"DHIS_CONFIG": true
-	}
-};
+    }
+}

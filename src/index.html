@@ -15,346 +15,36 @@
             </div>
         </div>
         </a>
-        <p class="headerBarTitle">App skeleton for dummies</p>
+        <p class="headerBarTitle">Metadata integrity</p>
         <button class="headerBarExit" onclick="location.href='../../..';">Exit</button>
     </div>
 
     <div class="mainView">
         <style type="text/css" media="screen">
         </style>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-        <script type="text/javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-        <script type="text/javascript"
-            src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-        <script type="text/javascript"
-            src="https://unpkg.com/jspdf-autotable@3.7.1/dist/jspdf.plugin.autotable.js"></script>
-        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-        </link>
-        <script type="text/javascript">
-
-            function getContextPath() {
-                var ctx = window.location.pathname.substring(0, window.location.pathname.indexOf("/", 2));
-                console.log("Context path: " + ctx);
-                if (ctx == "/api") return "";
-                return ctx;
-            }
-
-            const baseUrl = getContextPath() + "/api/";
-            var jobSummary = [];
-            var dataIntegritySummaryResults = [];
-            var currentDetails = [];
-
-            //Fetch async from API
-            async function d2Fetch(endpoint) {
-                return new Promise(function (resolve, reject) {
-                    $.ajax({
-                        "type": "GET",
-                        "url": baseUrl + endpoint,
-                        "dataType": "json",
-                        "success": function (data) {
-                            resolve(data);
-                        },
-                        "error": function (err) {
-                            console.log(err)
-                            reject(false);
-                        }
-                    });
-                });
-            }
-
-            async function d2Post(endpoint, body) {
-                return new Promise(function (resolve, reject) {
-                    $.ajax({
-                        "type": "POST",
-                        "url": baseUrl + endpoint,
-                        "dataType": "json",
-                        "data": body,
-                        "success": function (data) {
-                            resolve(data);
-                        },
-                        "error": function (err) {
-                            console.log(err)
-                            reject(false);
-                        }
-                    });
-                });
-            }
-
-            async function fetchUpdatedCachedResults() {
-                console.log("Fetching updated cached results");
-                const endpoint = "dataIntegrity/summary";
-                cached_data = await d2Fetch(endpoint);
-                Promise.all([cached_data])
-                    .then(console.log("Executed summary results")).
-                    catch((err) => {
-                        console.log(err);
-                        return false;
-                    });
-                renderSummariesTable(cached_data);
-            }
-
-
-            /*     async function fetchAllSummaries() {
-                    console.log("Triggering all summaries");
-                    const endpoint = "dataIntegrity/summary";
-                    data = await d2Fetch(endpoint);
-                    if (!data) {
-                        console.log("No data integrity summaries could be found.");
-                        return false;
-                    }
-                    else {
-                        return data;
-                    }
-                } */
-
-
-            function fetchAllSummaries() {
-                const path = "dataIntegrity/summary";
-                return new Promise((resolve, reject) => {
-                    fetch(baseUrl + path, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            let tries = 0;
-
-                            function checkForResponse() {
-                                fetch(baseUrl + path, {
-                                    method: 'GET',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                })
-                                    .then(response => response.json())
-                                    //Not super clear how to know when everything has
-                                    //been processed. For now, we just wait for 5 seconds
-                                    //and try 5 times. New results can be fetched manually.
-                                    .then(getData => {
-                                        if (tries >= 5) {
-                                            resolve(getData);
-                                        } else {
-                                            renderSummariesTable(getData);
-                                            tries++;
-                                            console.log("Tries is: " + tries);
-                                            setTimeout(checkForResponse, 2000);
-                                        }
-                                    })
-                                    .catch(error => {
-                                        console.error('Error checking for response:', error);
-                                        reject(error);
-                                    });
-                            }
-
-                            checkForResponse();
-                        })
-                        .catch(error => {
-                            console.error('Error making POST request:', error);
-                            reject(error);
-                        });
-                });
-            }
-
-            async function runIntegrityChecks() {
-
-                dataIntegritySummaryResults = await fetchAllSummaries();
-                Promise.all([dataIntegritySummaryResults])
-                    .then(console.log("Executed summary results")).
-                    catch((err) => {
-                        console.log(err);
-                        return false;
-                    });
-                renderSummariesTable(dataIntegritySummaryResults);
-            }
-
-            function renderSummariesTable(summaryObject) {
-                console.log("Rendering summary table")
-                const checks_name = Object.keys(summaryObject);
-
-                var html = "<div id='summary_table'><h2>Data Integrity Summaries</h2>";
-                html += "<table id='summary' class='display' width='100%'>";
-                html += "<thead><tr><th>Section</th><th>Integrity check</th><th>Severity</th><th>Count</th><th>Percentage</th><th>Details</th></tr></thead><tbody>";
-
-                for (i = 0; i < checks_name.length; i++) {
-                    var this_key = checks_name[i];
-                    var result = summaryObject[this_key];
-                    html += "<tr>";
-                    html += "<td>" + ((result?.section) ?? "") + "</td>";
-                    html += "<td>" + ((result?.description) ?? "") + "</td>";
-                    html += "<td>" + result.severity + "</td>";
-                    html += "<td>" + result.count + "</td>";
-                    html += "<td>" + ((result?.percentage) ?? "N/A") + "</td>";
-                    html += "<td>" + '<button onclick="runDetails(\'' + result.name + '\')">Details</button>' + "</td>";
-                    html += "</tr>";
-                }
-                html = html + "</tbody></table></div>"
-
-                $("#summaryTable").html(html);
-                new DataTable("#summary", { "paging": true, "searching": true, order: [[1, 'asc']] });
-
-            };
-
-            function renderDetailsTable(detailsObject) {
-
-                var html = "<div id='details_table'><h2>Details</h2>";
-                html += "<h3>Issue: " + detailsObject.displayName + "</h3>";
-                html = html + "<table id='details' class='display' width='100%'>";
-                html = html + "<thead><tr><th>Name</th><th>ID</th><th>Comment</th></thead><tbody>";
-
-                detailsObject.issues.forEach((issue) => {
-                    html += "<tr>";
-                    html += "<td>" + issue.name + "</td>";
-                    html += "<td>" + issue.id + "</td>";
-                    html += "<td>" + ((issue?.comment) ?? "-") + "</td>";
-                    html += "</tr>";
-                });
-
-                html = html + "</tbody></table></div>"
-
-                return html;
-            }
-
-            function performPostAndGet(baseUrl, path) {
-                return new Promise((resolve, reject) => {
-                    fetch(baseUrl + path, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            let tries = 0;
-
-                            function checkForResponse() {
-                                fetch(baseUrl + path, {
-                                    method: 'GET',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                })
-                                    .then(response => response.json())
-                                    .then(getData => {
-                                        if (Object.keys(getData).length > 0 || tries >= 10) {
-                                            resolve(getData);
-                                        } else {
-                                            tries++;
-                                            setTimeout(checkForResponse, 1000);
-                                        }
-                                    })
-                                    .catch(error => {
-                                        console.error('Error checking for response:', error);
-                                        reject(error);
-                                    });
-                            }
-
-                            checkForResponse();
-                        })
-                        .catch(error => {
-                            console.error('Error making POST request:', error);
-                            reject(error);
-                        });
-                });
-            }
-
-            function runDetails(code) {
-                var path = "dataIntegrity/details?checks=" + code;
-                performPostAndGet(baseUrl, path)
-                    .then(data => {
-                        const name = Object.keys(data)[0];
-                        var this_check = data[name];
-                        //Put this in a global variable so we can access it later
-                        currentDetails = this_check;
-                        var this_html = renderDetailsTable(this_check);
-                        $("#detailsReport").html(this_html);
-                        new DataTable("#details", { "paging": true, "searching": true, order: [[1, 'asc']] });
-                    })
-                    .catch(error => {
-                        console.error("Error in runDetails:", error);
-                    });
-            }
-
-            document.addEventListener('DOMContentLoaded', function () {
-                let foo = runIntegrityChecks();
-            });
-
-            function summariesToCSV(summary_results) {
-                var csv_data = [];
-                console.log("summary_results", summary_results);
-                csv_data.push('"Section","Name","Severity","Description","Count","Percentage","Details"');
-                issue_keys = Object.keys(summary_results);
-                console.log("issue_keys", issue_keys);
-                for (i = 0; i < issue_keys.length; i++) {
-                    var csv_row = [];
-                    var result = summary_results[issue_keys[i]];
-                    if (i == 1) {
-                        console.log("result", result);
-                    }
-                    csv_row.push('"' + (result?.section ?? "-") + '"');
-                    csv_row.push('"' + (result?.displayName ?? "-") + '"');
-                    csv_row.push('"' + (result?.severity ?? "-") + '"');
-                    csv_row.push('"' + (result?.description ?? "-") + '"');
-                    csv_row.push('"' + (result?.count ?? "-") + '"');
-                    csv_row.push('"' + (result?.percentage ?? "-") + '"');
-                    csv_data.push(csv_row.join(','));
-                }
-                csv_data = csv_data.join('\n');
-                downloadCSVFile(csv_data), "metdata_integrity_summary";
-            }
-
-            function detailsToCSV() {
-                var csv_data = [];
-                console.log("currentDetails", currentDetails);
-                csv_data.push('"ID","Name","Comment"');
-                currentDetails.issues.forEach((issue) => {
-                    var csv_row = [];
-                    csv_row.push('"' + (issue?.id ?? "-") + '"');
-                    csv_row.push('"' + (issue?.name ?? "-") + '"');
-                    csv_row.push('"' + (issue?.comment ?? "-") + '"');
-                    csv_data.push(csv_row.join(','));
-                });
-                csv_data = csv_data.join('\n');
-                downloadCSVFile(csv_data, currentDetails.name);
-            }
-
-            function downloadCSVFile(csv_data, filename) {
-                CSVFile = new Blob([csv_data], {
-                    type: "text/csv"
-                });
-                var temp_link = document.createElement('a');
-                temp_link.download = filename + ".csv";
-                var url = window.URL.createObjectURL(CSVFile);
-                temp_link.href = url;
-                temp_link.style.display = "none";
-                document.body.appendChild(temp_link);
-                temp_link.click();
-                document.body.removeChild(temp_link);
-            }
-        </script>
         <div id="actionButtons">
             <table>
                 <tr>
                     <td>
-                        <button onclick="fetchUpdatedCachedResults()">Fetch new results</button>
-                    </td>
-                    <td>
                         <button onclick="runIntegrityChecks()">Run integrity checks</button>
                     </td>
                     <td>
-                        <button onclick="summariesToCSV(dataIntegritySummaryResults)">Download Summary CSV</button>
+                        <button onclick="fetchUpdatedCachedResults()">Fetch summaries</button>
                     </td>
                 </tr>
             </table>
         </div>
+        <div id="progressBar">
+            <div id="progressBarText"></div>
+            <div id="progressBarFill"></div>
+            <h2>Messages</h2>
+            <div id="messages"></div>
         <div>
-            <div id="summaryTable"></div>
-            <div id="detailsSection">
-                <div id="detailsReport"></div>
-                <button onclick="detailsToCSV()">Download details</button>
+            <div id="summarySection">
+                <div id="summaryTable"></div>
+                    <button onclick="summariesToCSV(dataIntegritySummaryResults)">Download summary CSV</button>
             </div>
-
+            <div id="detailsReport"></div>
         </div>
     </div>
     </div>
