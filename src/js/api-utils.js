@@ -74,6 +74,8 @@ export async function fetchAllSummaries() {
 
     return new Promise((resolve, reject) => {
         var message_html = "Starting data integrity summary run...";
+        $("#detailsReport").hide();
+        $("#detailsButton").hide();
         $("#messages").html(message_html);
         fetch(baseUrl + summaries_to_run, {
             method: "POST",
@@ -226,6 +228,8 @@ export function runDetails(code) {
             var this_html = renderDetailsTable(this_check);
             $("#detailsReport").html(this_html);
             $("#details").DataTable({ "paging": true, "searching": true, order: [[1, "asc"]] });
+            const details_button = "<button onclick='summariesToCSV()'>Download as CSV</button>";
+            $("#detailsReport").append(details_button);
         })
         .catch(error => {
             console.error("Error in runDetails:", error);

@@ -53,8 +53,8 @@ export function renderDetailsTable(detailsObject) {
     html += "<h3>Severity: " + detailsObject.severity + "</h3>";
     html += "<h3>Introduction</h3>" + "<p>" + ((detailsObject?.introduction) ?? "-")  + "</p>";
     html += "<h3>Recommendation</h3>" + "<p>" + ((detailsObject?.recommendation) ?? "-") + "</p>";
-    html = html + "<table id='details' class='display' width='100%'>";
-    html = html + "<thead><tr><th>Name</th><th>ID</th><th>Comment</th></thead><tbody>";
+    html += "<table id='details' class='display' width='100%'>";
+    html += "<thead><tr><th>Name</th><th>ID</th><th>Comment</th></thead><tbody>";
 
     detailsObject.issues.forEach((issue) => {
         html += "<tr>";
@@ -64,7 +64,7 @@ export function renderDetailsTable(detailsObject) {
         html += "</tr>";
     });
 
-    html = html + "</tbody></table></div>"
+    html += "</tbody></table></div>"
 
     return html;
 }
