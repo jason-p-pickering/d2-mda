@@ -53,5 +53,5 @@ window.fetchSummaryMetadata = fetchSummaryMetadata;
 
 document.addEventListener('DOMContentLoaded', function () {
     fetchUpdatedCachedResults();
-    let foo = fetchSummaryMetadata();
+    fetchSummaryMetadata();
 });
