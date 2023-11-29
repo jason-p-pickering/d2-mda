@@ -8,6 +8,15 @@ function parsePercentage(percentage) {
         return "N/A";
     }
 }
+
+function emitDetailsButton(count, name) {
+    if (count > 0) {
+        return '<button onclick="runDetails(\'' + name + '\')">Details</button>';
+    } else {
+        return "-";
+    }
+}
+
 //* global $, DataTable *//
 export function renderSummariesTable(summaryObject) {
     console.log("Rendering summary table")
@@ -26,7 +35,7 @@ export function renderSummariesTable(summaryObject) {
         html += "<td>" + result.severity + "</td>";
         html += "<td>" + result.count + "</td>";
         html += "<td>" + ((parsePercentage(result.percentage)) ?? "N/A") + "</td>";
-        html += "<td>" + '<button onclick="runDetails(\'' + result.name + '\')">Details</button>' + "</td>";
+        html += "<td>" + emitDetailsButton(result.count, result.name) + "</td>";
         html += "</tr>";
     }
     html = html + "</tbody></table></div>"
