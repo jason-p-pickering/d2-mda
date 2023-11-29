@@ -33,6 +33,25 @@ export async function fetchUpdatedCachedResults() {
     renderSummariesTable(cached_data);
 }
 
+export async function fetchSummaryMetadata() {
+    return new Promise(function (resolve, reject) {
+        $.ajax({
+            "type": "GET",
+            "url": baseUrl + "/dataIntegrity",
+            "dataType": "json",
+            "success": function (data) {
+                resolve(data);
+            },
+            "error": function (err) {
+                console.log(err);
+                reject(false);
+            }
+        });
+    });
+
+}
+
+
 export function fetchAllSummaries() {
     const path = "dataIntegrity/summary";
     return new Promise((resolve, reject) => {
@@ -104,45 +123,60 @@ export async function runIntegrityChecks() {
 function performPostAndGet(baseUrl, path) {
     return new Promise((resolve, reject) => {
         fetch(baseUrl + path, {
-            method: "POST",
+            method: "GET",
             credentials: "same-origin",
             redirect: "follow",
             headers: {
                 "Content-Type": "application/json",
             },
-        })
-            .then(response => response.json())
-            .then(() => {
-                let tries = 0;
-
-                function checkForResponse() {
+        }).then(response => response.json())
+            .then(initial_data => {
+                if (Object.keys(initial_data).length > 0) {
+                    resolve(initial_data);
+                } else {
                     fetch(baseUrl + path, {
-                        method: "GET",
-                        credentials : "same-origin",
+                        method: "POST",
+                        credentials: "same-origin",
                         redirect: "follow",
                         headers: {
                             "Content-Type": "application/json",
                         },
-                    })
-                        .then(response => response.json())
-                        .then(getData => {
-                            if (Object.keys(getData).length > 0 || tries >= 10) {
-                                resolve(getData);
-                            } else {
-                                tries++;
-                                setTimeout(checkForResponse, 1000);
+                    }).then(response => response.json())
+                        .then(() => {
+                            let tries = 0;
+                            function checkForResponse() {
+                                fetch(baseUrl + path, {
+                                    method: "GET",
+                                    credentials: "same-origin",
+                                    redirect: "follow",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                })
+                                    .then(response => response.json())
+                                    .then(getData => {
+                                        if (Object.keys(getData).length > 0 || tries >= 10) {
+                                            resolve(getData);
+                                        } else {
+                                            tries++;
+                                            setTimeout(checkForResponse, 1000);
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error("Error checking for response:", error);
+                                        reject(error);
+                                    });
                             }
+                            checkForResponse();
                         })
                         .catch(error => {
-                            console.error("Error checking for response:", error);
+                            console.error("Error making POST request:", error);
                             reject(error);
                         });
                 }
-
-                checkForResponse();
             })
             .catch(error => {
-                console.error("Error making POST request:", error);
+                console.error("Error checking for response:", error);
                 reject(error);
             });
     });
