@@ -39,7 +39,7 @@
       "48": "img/icons/app_logo_48x48.png",
       "96": "img/icons/app_logo_96x96.png"
     },
-    "name": "DHIS2 Metadata Integrity App",
+    "name": "Metadata Integrity",
     "version": "0.1.0",
     "appType": "APP"
   }

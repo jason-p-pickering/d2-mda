@@ -34,29 +34,11 @@ export async function fetchUpdatedCachedResults() {
 }
 
 export async function fetchSummaryMetadata() {
-    return new Promise(function (resolve, reject) {
-        $.ajax({
-            "type": "GET",
-            "url": baseUrl + "/dataIntegrity",
-            "dataType": "json",
-            "success": function (data) {
-                resolve(data);
-            },
-            "error": function (err) {
-                console.log(err);
-                reject(false);
-            }
-        });
-    });
 
-}
-
-
-export function fetchAllSummaries() {
-    const path = "dataIntegrity/summary";
+    const path = "dataIntegrity";
     return new Promise((resolve, reject) => {
         fetch(baseUrl + path, {
-            method: "POST",
+            method: "GET",
             credentials: "same-origin",
             redirect: "follow",
             headers: {
@@ -64,7 +46,48 @@ export function fetchAllSummaries() {
             },
         })
             .then(response => response.json())
+            .then(data => {
+                //console.log(data);
+                console.log(Object.keys(data).length + " checks found");
+                resolve(data);
+            }).catch(error => {
+                console.error("Error fetching summary metadata:", error);
+                reject(error);
+            })});
+
+}
+
+export async function fetchAllSummaries() {
+    const checks = await fetchSummaryMetadata();
+    const check_names = checks.map(check => check.name);
+    //Exclude certain slow running checks
+    const excluded_checks = [
+    "INDICATORS_WITH_INVALID_NUMERATOR",
+    "INDICATORS_WITH_INVALID_DENOMINATOR",
+    "PROGRAM_INDICATORS_WITH_INVALID_EXPRESSIONS",
+    "PROGRAM_INDICATORS_WITH_INVALID_FILTERS",
+    "VALIDATION_RULES_WITH_INVALID_LEFT_SIDE_EXPRESSION",
+    "VALIDATION_RULES_WITH_INVALID_RIGHT_SIDE_EXPRESSION"].map(check => check.toLowerCase());
+
+    const checks_to_run = check_names.filter(check => !excluded_checks.includes(check));
+    const path = "dataIntegrity/summary";
+    const summaries_to_run = path + "?checks=" + checks_to_run.join(",");
+
+    return new Promise((resolve, reject) => {
+        var message_html = "Starting data integrity summary run...";
+        $("#messages").html(message_html);
+        fetch(baseUrl + summaries_to_run, {
+            method: "POST",
+            credentials: "same-origin",
+            redirect: "follow",
+            body: JSON.stringify(check_names),
+            headers: {
+                "Content-Type": "application/json",
+            },
+        })
+            .then(response => response.json())
             .then(() => {
+                const total_tries = 60;
                 let tries = 0;
 
                 function checkForResponse() {
@@ -77,17 +100,27 @@ export function fetchAllSummaries() {
                         },
                     })
                         .then(response => response.json())
-                        //Not super clear how to know when everything has
-                        //been processed. For now, we just wait for 5 seconds
-                        //and try 5 times. New results can be fetched manually.
                         .then(getData => {
-                            if (tries >= 5) {
+                            message_html = "<ul>"
+                            message_html += "<li><p>Found " + Object.keys(getData).length + " of " + checks_to_run.length + " summaries. Please wait...</p></li>";
+                            message_html += "<li><p>Tries left:  " + (total_tries - tries) + "</p></li>";
+                            message_html += "</ul>";
+                            $("#messages").html(message_html);
+                            //Not totally clear why we may get more checks than we asked for?
+                            if (tries >= total_tries || Object.keys(getData).length  >= checks_to_run.length) {
+                                message_html = "<p>Data integrity summaries completed.</p>";
+                                if (tries >= total_tries) {
+                                    message_html += "<p>Maximum tries exceeded. Some summaries may be missing.</p>";
+                                } else {
+                                    message_html += "<p>All scheduled summaries completed successfully.</p>";
+                                }
+
+                                $("#messages").html(message_html);
                                 resolve(getData);
                             } else {
                                 renderSummariesTable(getData);
                                 tries++;
-                                console.log("Tries is: " + tries);
-                                setTimeout(checkForResponse, 2000);
+                                setTimeout(checkForResponse, 5000);
                             }
                         })
                         .catch(error => {

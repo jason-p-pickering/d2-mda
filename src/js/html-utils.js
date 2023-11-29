@@ -1,3 +1,13 @@
+
+"use strict";
+
+function parsePercentage(percentage) {
+    if (percentage) {
+        return Math.round(parseFloat(percentage)) + "%";
+    } else {
+        return "N/A";
+    }
+}
 //* global $, DataTable *//
 export function renderSummariesTable(summaryObject) {
     console.log("Rendering summary table")
@@ -15,7 +25,7 @@ export function renderSummariesTable(summaryObject) {
         html += "<td>" + ((result?.description) ?? "") + "</td>";
         html += "<td>" + result.severity + "</td>";
         html += "<td>" + result.count + "</td>";
-        html += "<td>" + ((result?.percentage) ?? "N/A") + "</td>";
+        html += "<td>" + ((parsePercentage(result.percentage)) ?? "N/A") + "</td>";
         html += "<td>" + '<button onclick="runDetails(\'' + result.name + '\')">Details</button>' + "</td>";
         html += "</tr>";
     }
@@ -31,6 +41,9 @@ export function renderDetailsTable(detailsObject) {
 
     var html = "<div id='details_table'><h2>Details</h2>";
     html += "<h3>Issue: " + detailsObject.displayName + "</h3>";
+    html += "<h3>Severity: " + detailsObject.severity + "</h3>";
+    html += "<h3>Introduction</h3>" + "<p>" + ((detailsObject?.introduction) ?? "-")  + "</p>";
+    html += "<h3>Recommendation</h3>" + "<p>" + ((detailsObject?.recommendation) ?? "-") + "</p>";
     html = html + "<table id='details' class='display' width='100%'>";
     html = html + "<thead><tr><th>Name</th><th>ID</th><th>Comment</th></thead><tbody>";
 
