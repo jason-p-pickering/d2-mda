@@ -47,7 +47,6 @@ export async function fetchSummaryMetadata() {
         })
             .then(response => response.json())
             .then(data => {
-                //console.log(data);
                 console.log(Object.keys(data).length + " checks found");
                 resolve(data);
             }).catch(error => {
