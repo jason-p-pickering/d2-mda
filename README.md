@@ -1,8 +1,9 @@
-# DHIS2 App Template for Dummies
-Basic DHIS2 app skeleton.
+# DHIS2 Metadata Integrity App
+This app will help you to assess your metadata quality 
+using the built-in checks in DHIS2.
 
 ## License
-© Copyright 
+© Copyright 2023 University of Oslo
 
 
 ## Getting started

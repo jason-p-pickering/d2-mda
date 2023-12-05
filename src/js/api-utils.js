@@ -1,5 +1,39 @@
 "use strict";
 
+class DataIntegrityIssue {
+    constructor(name, displayName, section, severity, description, recommendation, issuesIdType) {
+      this.name = name;
+      this.displayName = displayName;
+      this.section = section;
+      this.severity = severity;
+      this.description = description;
+      this.recommendation = recommendation;
+      this.issuesIdType = issuesIdType;
+    }
+
+    emitTableRow() {
+        var this_row = "<tr>";
+        this_row += "<td>" + this.displayName + "</td>";
+        this_row += "<td>" + this.section + "</td>";
+        this_row += "<td>" + this.severity + "</td>";
+        this_row += "<td>" + this.description + "</td>";
+        this_row += "<td>" + this.recommendation + "</td>";
+        this_row += "</tr>";
+        return this_row;
+    }
+  }
+
+/* class DataIntegritySummary extends DataIntegrityIssue {
+    constructor (name, displayName, section, severity, description, recommendation, issuesIdType,finishedTime,count,percentage) {
+        super();
+        this.finishedTime = finishedTime;
+        this.count = count;
+        this.percentage = percentage;
+
+    }
+}
+ */
+
 //Fetch async from API
 /* global $ baseUrl */
 async function d2Fetch(endpoint) {
@@ -25,7 +59,8 @@ export async function fetchUpdatedCachedResults() {
     const endpoint = "dataIntegrity/summary";
     var cached_data = await d2Fetch(endpoint);
     Promise.all([cached_data])
-        .then(console.log("Executed summary results")).
+        .then(() => {
+            console.log("Executed summary results")}).
         catch((err) => {
             console.log(err);
             return false;
@@ -47,6 +82,21 @@ export async function fetchSummaryMetadata() {
         })
             .then(response => response.json())
             .then(data => {
+
+                var data_integrity_issues = [];
+                data.forEach(issue => {
+                    var this_issue = new DataIntegrityIssue(
+                        issue.name,
+                        issue.displayName,
+                        issue.section,
+                        issue.severity,
+                        issue.description,
+                        issue.recommendation,
+                        issue.issuesIdType
+                    );
+                    data_integrity_issues.push(this_issue);
+                })
+                console.log(data_integrity_issues);
                 console.log(Object.keys(data).length + " checks found");
                 resolve(data);
             }).catch(error => {
@@ -59,18 +109,51 @@ export async function fetchSummaryMetadata() {
 export async function fetchAllSummaries() {
     const checks = await fetchSummaryMetadata();
     const check_names = checks.map(check => check.name);
-    //Exclude certain slow running checks
+    //Exclude all Java based checks
     const excluded_checks = [
-    "INDICATORS_WITH_INVALID_NUMERATOR",
-    "INDICATORS_WITH_INVALID_DENOMINATOR",
-    "PROGRAM_INDICATORS_WITH_INVALID_EXPRESSIONS",
-    "PROGRAM_INDICATORS_WITH_INVALID_FILTERS",
-    "VALIDATION_RULES_WITH_INVALID_LEFT_SIDE_EXPRESSION",
-    "VALIDATION_RULES_WITH_INVALID_RIGHT_SIDE_EXPRESSION"].map(check => check.toLowerCase());
+        "DATA_ELEMENTS_WITHOUT_DATA_SETS",
+        "DATA_ELEMENTS_WITHOUT_GROUPS",
+        "DATA_ELEMENTS_ASSIGNED_TO_DATA_SETS_WITH_DIFFERENT_PERIOD_TYPES",
+        "DATA_ELEMENTS_VIOLATING_EXCLUSIVE_GROUP_SETS",
+        "DATA_ELEMENTS_IN_DATA_SET_NOT_IN_FORM",
+        "CATEGORY_COMBOS_BEING_INVALID",
+        "DATA_SETS_NOT_ASSIGNED_TO_ORG_UNITS",
+        "INDICATORS_WITH_IDENTICAL_FORMULAS",
+        "INDICATORS_WITHOUT_GROUPS",
+        "INDICATORS_WITH_INVALID_NUMERATOR",
+        "INDICATORS_WITH_INVALID_DENOMINATOR",
+        "INDICATORS_VIOLATING_EXCLUSIVE_GROUP_SETS",
+        "PERIODS_DUPLICATES",
+        "ORG_UNITS_WITH_CYCLIC_REFERENCES",
+        "ORG_UNITS_BEING_ORPHANED",
+        "ORG_UNITS_WITHOUT_GROUPS",
+        "ORG_UNITS_VIOLATING_EXCLUSIVE_GROUP_SETS",
+        "ORG_UNIT_GROUPS_WITHOUT_GROUP_SETS",
+        "VALIDATION_RULES_WITHOUT_GROUPS",
+        "VALIDATION_RULES_WITH_INVALID_LEFT_SIDE_EXPRESSION",
+        "VALIDATION_RULES_WITH_INVALID_RIGHT_SIDE_EXPRESSION",
+        "PROGRAM_INDICATORS_WITH_INVALID_EXPRESSIONS",
+        "PROGRAM_INDICATORS_WITH_INVALID_FILTERS",
+        "PROGRAM_INDICATORS_WITHOUT_EXPRESSION",
+        "PROGRAM_RULES_WITHOUT_CONDITION",
+        "PROGRAM_RULES_WITHOUT_PRIORITY",
+        "PROGRAM_RULES_WITHOUT_ACTION",
+        "PROGRAM_RULE_VARIABLES_WITHOUT_DATA_ELEMENT",
+        "PROGRAM_RULE_VARIABLES_WITHOUT_ATTRIBUTE",
+        "PROGRAM_RULE_ACTIONS_WITHOUT_DATA_OBJECT",
+        "PROGRAM_RULE_ACTIONS_WITHOUT_NOTIFICATION",
+        "PROGRAM_RULE_ACTIONS_WITHOUT_SECTION",
+        "PROGRAM_RULE_ACTIONS_WITHOUT_STAGE_ID",
+        //Fix this. Filter out slow checks
+        "data_elements_aggregate_abandoned",
+        "data_elements_aggregate_no_data"
+    ].map(check => check.toLowerCase());
 
     const checks_to_run = check_names.filter(check => !excluded_checks.includes(check));
+    console.log("Planning to run checks", checks_to_run);
     const path = "dataIntegrity/summary";
     const summaries_to_run = path + "?checks=" + checks_to_run.join(",");
+    document.getElementById("run_checks").disabled = true;
 
     return new Promise((resolve, reject) => {
         var message_html = "Starting data integrity summary run...";
@@ -81,14 +164,14 @@ export async function fetchAllSummaries() {
             method: "POST",
             credentials: "same-origin",
             redirect: "follow",
-            body: JSON.stringify(check_names),
+            //body: JSON.stringify(check_names),
             headers: {
                 "Content-Type": "application/json",
             },
         })
             .then(response => response.json())
             .then(() => {
-                const total_tries = 60;
+                const total_tries = 200;
                 let tries = 0;
 
                 function checkForResponse() {
@@ -102,6 +185,22 @@ export async function fetchAllSummaries() {
                     })
                         .then(response => response.json())
                         .then(getData => {
+
+                            //Merge the new data with the existing data
+                            const got_keys = Object.keys(getData);
+                            if (got_keys.length > 0) {
+                                //Merge the new data with the existing data
+                                for(var i = 0; i < got_keys.length; i++) {
+                                    var this_check = getData[got_keys[i]];
+                                    var existing_check = dataIntegritySummaryResults[got_keys[i]];
+                                    if (existing_check) {
+                                        dataIntegritySummaryResults[existing_check] = this_check;
+                                    } else {
+                                        dataIntegritySummaryResults.push(this_check);
+                                    }
+                                }
+                            }
+
                             message_html = "<ul>"
                             message_html += "<li><p>Found " + Object.keys(getData).length + " of " + checks_to_run.length + " summaries. Please wait...</p></li>";
                             message_html += "<li><p>Tries left:  " + (total_tries - tries) + "</p></li>";
@@ -117,14 +216,16 @@ export async function fetchAllSummaries() {
                                 }
 
                                 $("#messages").html(message_html);
+                                document.getElementById("run_checks").disabled = false;
                                 resolve(getData);
                             } else {
                                 renderSummariesTable(getData);
                                 tries++;
-                                setTimeout(checkForResponse, 5000);
+                                setTimeout(checkForResponse, 5_000);
                             }
                         })
                         .catch(error => {
+                            document.getElementById("run_checks").disabled = false;
                             console.error("Error checking for response:", error);
                             reject(error);
                         });
@@ -135,13 +236,14 @@ export async function fetchAllSummaries() {
             .catch(error => {
                 console.error("Error making POST request:", error);
                 reject(error);
-            });
+            })
     });
 }
 
 /* global dataIntegritySummaryResults */
 export async function runIntegrityChecks() {
-
+    console.log("Running integrity checks");
+    $("run_checks").disabled = true;
     // eslint-disable-next-line no-global-assign
     dataIntegritySummaryResults = await fetchAllSummaries();
     Promise.all([dataIntegritySummaryResults])
@@ -150,7 +252,9 @@ export async function runIntegrityChecks() {
             console.log(err);
             return false;
         });
+
     renderSummariesTable(dataIntegritySummaryResults);
+    $("run_checks").disabled = false;
 }
 
 
@@ -226,9 +330,11 @@ export function runDetails(code) {
             // eslint-disable-next-line no-unused-vars, no-undef
             currentDetails = this_check;
             var this_html = renderDetailsTable(this_check);
+            $("#detailsReport").show();
+            $("#detailsButton").show();
             $("#detailsReport").html(this_html);
             $("#details").DataTable({ "paging": true, "searching": true, order: [[1, "asc"]] });
-            const details_button = "<button onclick='summariesToCSV()'>Download as CSV</button>";
+            const details_button = "<button onclick='detailsToCSV()'>Download as CSV</button>";
             $("#detailsReport").append(details_button);
         })
         .catch(error => {

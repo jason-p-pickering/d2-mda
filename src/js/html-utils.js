@@ -30,10 +30,10 @@ export function renderSummariesTable(summaryObject) {
         var this_key = checks_name[i];
         var result = summaryObject[this_key];
         html += "<tr>";
-        html += "<td>" + ((result?.section) ?? "") + "</td>";
-        html += "<td>" + ((result?.description) ?? "") + "</td>";
-        html += "<td>" + result.severity + "</td>";
-        html += "<td>" + result.count + "</td>";
+        html += "<td>" + ((result?.section) ?? "-") + "</td>";
+        html += "<td>" + ((result?.description) ?? "-") + "</td>";
+        html += "<td>" + ((result?.severity) ?? "UNKNOWN") + "</td>";
+        html += "<td>" + ((result?.count) ?? "-") + "</td>";
         html += "<td>" + ((parsePercentage(result.percentage)) ?? "N/A") + "</td>";
         html += "<td>" + emitDetailsButton(result.count, result.name) + "</td>";
         html += "</tr>";
@@ -43,13 +43,12 @@ export function renderSummariesTable(summaryObject) {
     $("#summaryTable").html(html); // eslint-disable-line no-undef
     $("#summary").DataTable({ "paging": true, "searching": true, order: [[1, 'asc']] }); // eslint-disable-line no-undef
 
-
 }
 
 export function renderDetailsTable(detailsObject) {
 
     var html = "<div id='details_table'><h2>Details</h2>";
-    html += "<h3>Issue: " + detailsObject.displayName + "</h3>";
+    html += "<h3>Issue: " + detailsObject.description + "</h3>";
     html += "<h3>Severity: " + detailsObject.severity + "</h3>";
     html += "<h3>Introduction</h3>" + "<p>" + ((detailsObject?.introduction) ?? "-")  + "</p>";
     html += "<h3>Recommendation</h3>" + "<p>" + ((detailsObject?.recommendation) ?? "-") + "</p>";
