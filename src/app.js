@@ -17,6 +17,7 @@ import {detailsToCSV} from "./js/csv-utils.js";
 import {renderSummariesTable} from "./js/html-utils.js";
 import { renderDetailsTable } from "./js/html-utils.js";
 import { fetchSummaryMetadata } from "./js/api-utils.js";
+import { refreshSingleSummary } from "./js/api-utils.js";
 
 
 //CSS
@@ -49,9 +50,10 @@ window.renderDetailsTable = renderDetailsTable;
 window.summariesToCSV = summariesToCSV;
 window.detailsToCSV = detailsToCSV;
 window.fetchSummaryMetadata = fetchSummaryMetadata;
+window.refreshSingleSummary = refreshSingleSummary;
 
 
 document.addEventListener('DOMContentLoaded', function () {
     fetchUpdatedCachedResults();
-    fetchSummaryMetadata();
+    //fetchSummaryMetadata();
 });

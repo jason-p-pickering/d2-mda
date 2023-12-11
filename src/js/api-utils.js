@@ -1,5 +1,8 @@
 "use strict";
 
+import { blinkingDots, renderSummariesTable } from "./html-utils.js";
+
+/*
 class DataIntegrityIssue {
     constructor(name, displayName, section, severity, description, recommendation, issuesIdType) {
       this.name = name;
@@ -21,7 +24,7 @@ class DataIntegrityIssue {
         this_row += "</tr>";
         return this_row;
     }
-  }
+  } */
 
 /* class DataIntegritySummary extends DataIntegrityIssue {
     constructor (name, displayName, section, severity, description, recommendation, issuesIdType,finishedTime,count,percentage) {
@@ -53,19 +56,88 @@ async function d2Fetch(endpoint) {
     });
 }
 
-/* global renderSummariesTable */
+/* global dataIntegritySummaryResults */
 export async function fetchUpdatedCachedResults() {
+    try {
+        console.log("Fetching updated cached results");
+        const endpoint = "dataIntegrity/summary";
+        const checks_to_run = await getChecksToRun();
+        const summaries_to_run = endpoint + "?checks=" + checks_to_run.join(",");
+        var cached_data = await d2Fetch(summaries_to_run);
+        // eslint-disable-next-line no-global-assign
+        dataIntegritySummaryResults = cached_data;
+        console.log("Executed summary results");
+        renderSummariesTable(cached_data);
+    } catch (err) {
+        console.log(err);
+        return false;
+    }
+}
+
+export async function refreshSingleSummary(name) {
     console.log("Fetching updated cached results");
-    const endpoint = "dataIntegrity/summary";
-    var cached_data = await d2Fetch(endpoint);
-    Promise.all([cached_data])
-        .then(() => {
-            console.log("Executed summary results")}).
-        catch((err) => {
-            console.log(err);
-            return false;
-        });
-    renderSummariesTable(cached_data);
+    const endpoint = "dataIntegrity/summary?checks=" + name;
+    try {
+        fetch(baseUrl + endpoint, {
+            method: "POST",
+            credentials: "same-origin",
+            redirect: "follow",
+            //body: JSON.stringify(check_names),
+            headers: {
+                "Content-Type": "application/json",
+            },
+        })
+            .then(response => response.json())
+            .then(() => {
+                const total_tries = 20;
+                let tries = 0;
+
+                function checkForResponse() {
+                    fetch(baseUrl + endpoint, {
+                        method: "GET",
+                        credentials: "same-origin",
+                        redirect: "follow",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                    })
+                        .then(response => response.json())
+                        .then(getData => {
+                            var message_html = "<ul>"
+                            message_html += "<li><p>Found " + Object.keys(getData).length + " summarry. Please wait." + blinkingDots() + "</p></li>";
+                            message_html += "<li><p>Tries left:  " + (total_tries - tries) + "</p></li>";
+                            message_html += "</ul>";
+                            $("#messages").html(message_html);
+
+                            //Not totally clear why we may get more checks than we asked for?
+                            if (tries >= total_tries || Object.keys(getData).length >= 1) {
+                                //eslint-disable-next-line no-global-assign
+                                dataIntegritySummaryResults[Object.keys(getData)[0]] = getData[Object.keys(getData)[0]];
+                                message_html = "<p>Data integrity summary refresh completed.</p>";
+                                if (tries >= total_tries) {
+                                    message_html += "<p>Maximum tries exceeded. Some summaries may be missing.</p>";
+                                } else {
+                                    message_html += "<p>The scheduled summary completed successfully.</p>";
+                                }
+
+                                $("#messages").html(message_html);
+                                renderSummariesTable(dataIntegritySummaryResults);
+                            } else {
+                                tries++;
+                                setTimeout(checkForResponse, 5_000);
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error checking for response:", error);
+                        });
+                }
+
+                checkForResponse();
+            })
+            .catch(error => {
+                console.error("Error making POST request:", error);
+            });
+    } catch (err) { console.log(err); }
 }
 
 export async function fetchSummaryMetadata() {
@@ -82,34 +154,18 @@ export async function fetchSummaryMetadata() {
         })
             .then(response => response.json())
             .then(data => {
-
-                var data_integrity_issues = [];
-                data.forEach(issue => {
-                    var this_issue = new DataIntegrityIssue(
-                        issue.name,
-                        issue.displayName,
-                        issue.section,
-                        issue.severity,
-                        issue.description,
-                        issue.recommendation,
-                        issue.issuesIdType
-                    );
-                    data_integrity_issues.push(this_issue);
-                })
-                console.log(data_integrity_issues);
                 console.log(Object.keys(data).length + " checks found");
                 resolve(data);
             }).catch(error => {
                 console.error("Error fetching summary metadata:", error);
                 reject(error);
-            })});
+            })
+    });
 
 }
 
-export async function fetchAllSummaries() {
-    const checks = await fetchSummaryMetadata();
-    const check_names = checks.map(check => check.name);
-    //Exclude all Java based checks
+async function getChecksToRun() {
+
     const excluded_checks = [
         "DATA_ELEMENTS_WITHOUT_DATA_SETS",
         "DATA_ELEMENTS_WITHOUT_GROUPS",
@@ -149,31 +205,211 @@ export async function fetchAllSummaries() {
         "data_elements_aggregate_no_data"
     ].map(check => check.toLowerCase());
 
-    const checks_to_run = check_names.filter(check => !excluded_checks.includes(check));
-    console.log("Planning to run checks", checks_to_run);
+    const checks_array = [fetchSummaryMetadata(),
+    fetchDataStoreKey("data-integrity", "excluded-checks"),
+    fetchDataStoreKey("data-integrity", "included-checks")];
+
+    //If there are any exclude checks in the datastore, use those instead
+    const user_checks = await Promise.allSettled(checks_array);
+    var all_checks = user_checks[0].value.map(check => check.name.toLowerCase());
+    //If the user has specified any checks to exclude, remove them from the list
+    var excluded_user_checks = user_checks[1].value;
+    if (excluded_user_checks.length > 0) {
+        excluded_user_checks = excluded_user_checks.map(check => check.toLowerCase());
+        all_checks = all_checks.filter(check => !excluded_user_checks.includes(check));
+    } else {
+        all_checks = all_checks.filter(check => !excluded_checks.includes(check));
+    }
+
+    //If the user has specified any checks to include, add them to the list
+    let included_user_checks = user_checks[2].value;
+    if (included_user_checks) {
+        included_user_checks = included_user_checks.map(check => check.toLowerCase());
+        all_checks = all_checks.concat(included_user_checks);
+    }
+    const final_checks = Array.from(new Set(all_checks));
+    return final_checks;
+
+}
+
+export async function fetchAllSummaries() {
+    const checks_to_run = await getChecksToRun();
+    await fetchNamedSummaries(checks_to_run);
+}
+
+function extractFinishedTimes(input) {
+    const result = {};
+
+    for (const key in input) {
+        result[key] = input[key].finishedTime;
+    }
+    return result;
+  }
+
+export async function fetchNamedSummaries(checks_to_run) {
+
     const path = "dataIntegrity/summary";
     const summaries_to_run = path + "?checks=" + checks_to_run.join(",");
+    const total_checks = checks_to_run.length;
     document.getElementById("run_checks").disabled = true;
+    //Create a key value pair of all current checks and their timestamps
+    // if nothing exists, use a long time ago
+    var previous_cache_timestamps = {};
+    const long_time_ago = "1970-01-01T00:00:00.000+0000";
+    try {
+        console.log("Fetching updated cached results");
+        var cached_data = await d2Fetch(summaries_to_run);
+        for (const check of checks_to_run) {
+            if (cached_data[check]) {
+                previous_cache_timestamps[check] = cached_data[check].finishedTime;
+            } else
+            previous_cache_timestamps[check] = long_time_ago;
+        }
+    } catch (err) {
+        console.log(err);
+        return false;
+    }
 
-    return new Promise((resolve, reject) => {
-        var message_html = "Starting data integrity summary run...";
-        $("#detailsReport").hide();
-        $("#detailsButton").hide();
-        $("#messages").html(message_html);
-        fetch(baseUrl + summaries_to_run, {
+    var message_html = "Starting data integrity summary run...";
+    $("#detailsReport").hide();
+    $("#detailsButton").hide();
+    $("#messages").html(message_html);
+
+    fetch(baseUrl + summaries_to_run, {
+        method: "POST",
+        credentials: "same-origin",
+        redirect: "follow",
+        //body: JSON.stringify(check_names),
+        headers: {
+            "Content-Type": "application/json",
+        },
+    })
+        .then(response => response.json())
+        .then(() => {
+            const total_tries = 200;
+            let tries = 0;
+            var remaining_checks = checks_to_run;
+            var completed_checks = [];
+
+            function checkForResponse() {
+                fetch(baseUrl + summaries_to_run, {
+                    method: "GET",
+                    credentials: "same-origin",
+                    redirect: "follow",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                })
+                    .then(response => response.json())
+                    .then(getData => {
+                        //There may be cached results already. Determine if they need to be replaced and how many are completed.
+                        var is_final = false;
+                        if (Object.keys(getData)) {
+                            for (const [key, value] of Object.entries(getData)) {
+                                if (value.finishedTime > previous_cache_timestamps[key]) {
+                                    //Remove this check from the list of checks left to run
+                                    const idx = remaining_checks.indexOf(key);
+                                    if (idx !== -1) {remaining_checks.splice(idx, 1);}
+                                    completed_checks.push(key);
+                                    completed_checks = Array.from(new Set(remaining_checks));
+                                }
+                                dataIntegritySummaryResults[key] = value;
+                        }
+                        const updated_cache_timestamps = extractFinishedTimes(dataIntegritySummaryResults);
+                        const final_keys = Object.keys(previous_cache_timestamps);
+                        const timestamps_updated = final_keys.every(key =>  (updated_cache_timestamps[key] > previous_cache_timestamps[key]));
+                        const all_checks_completed = final_keys.every(key => Object.keys(updated_cache_timestamps).includes(key));
+                        is_final = timestamps_updated && all_checks_completed;
+
+                        //Determine how many checks are left to run
+                        //Update the messages in the UI
+                        message_html = "<ul>"
+                        message_html += "<li><p>Updated " + (total_checks - checks_to_run.length) + " of " + total_checks + " summaries. Please wait." + blinkingDots() + "</p></li>";
+                        message_html += "<li><p>Tries left:  " + (total_tries - tries) + "</p></li>";
+                        message_html += "<li><p>Time remaining:  " + Math.floor((total_tries - tries) * 5 / 60) + ":" + ((total_tries - tries) * 5 % 60).toString().padStart(2, "0") + "</p></li>";
+                        message_html += "</ul>";
+                        $("#messages").html(message_html);
+                        }
+
+
+                        //Not totally clear why we may get more checks than we asked for?
+                        if (tries >= total_tries || is_final) {
+                            //eslint-disable-next-line no-global-assign
+                            dataIntegritySummaryResults = getData;
+                            message_html = "<p>Data integrity summaries completed.</p>";
+                            if (tries >= total_tries) {
+                                message_html += "<p>Maximum tries exceeded. Some summaries may be missing.</p>";
+                            } else {
+                                message_html += "<p>All scheduled summaries completed successfully.</p>";
+                            }
+                            $("#messages").html(message_html);
+                            document.getElementById("run_checks").disabled = false;
+                            renderSummariesTable(dataIntegritySummaryResults);
+
+                        } else {
+                            renderSummariesTable(getData);
+                            tries++;
+                            setTimeout(checkForResponse, 5_000);
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById("run_checks").disabled = false;
+                        console.error("Error checking for response:", error);
+                    });
+            }
+
+            checkForResponse();
+        })
+        .catch(error => {
+            message_html = "<p>Could not trigger a new data integrity run.</p>";
+            $("#messages").html(message_html);
+            console.error("Error making POST request:", error);
+        })
+}
+
+
+export async function runIntegrityChecks() {
+    console.log("Running integrity checks");
+    $("run_checks").disabled = true;
+    try {
+        // eslint-disable-next-line no-global-assign
+        await fetchAllSummaries();
+    } catch (error) {
+        console.error("Error running integrity checks:", error);
+        return false;
+    } finally {
+        $("run_checks").disabled = false;
+    }
+
+
+}
+
+export async function fetchDataStoreKey(namespace, key) {
+    console.log("Fetching updated cached results");
+    const endpoint = "dataStore/" + namespace + "/" + key;
+
+    try {
+        const response = await d2Fetch(endpoint);
+        return response ? response : [];
+    } catch (err) {
+        console.log("Key not found");
+        return [];
+    }
+}
+
+function performPostAndGet(baseUrl, path) {
+    return new Promise((resolve) => {
+
+        fetch(baseUrl + path, {
             method: "POST",
             credentials: "same-origin",
             redirect: "follow",
-            //body: JSON.stringify(check_names),
             headers: {
                 "Content-Type": "application/json",
             },
-        })
-            .then(response => response.json())
+        }).then(response => response.json())
             .then(() => {
-                const total_tries = 200;
                 let tries = 0;
-
                 function checkForResponse() {
                     fetch(baseUrl + path, {
                         method: "GET",
@@ -185,144 +421,30 @@ export async function fetchAllSummaries() {
                     })
                         .then(response => response.json())
                         .then(getData => {
-
-                            //Merge the new data with the existing data
-                            const got_keys = Object.keys(getData);
-                            if (got_keys.length > 0) {
-                                //Merge the new data with the existing data
-                                for(var i = 0; i < got_keys.length; i++) {
-                                    var this_check = getData[got_keys[i]];
-                                    var existing_check = dataIntegritySummaryResults[got_keys[i]];
-                                    if (existing_check) {
-                                        dataIntegritySummaryResults[existing_check] = this_check;
-                                    } else {
-                                        dataIntegritySummaryResults.push(this_check);
-                                    }
-                                }
-                            }
-
-                            message_html = "<ul>"
-                            message_html += "<li><p>Found " + Object.keys(getData).length + " of " + checks_to_run.length + " summaries. Please wait...</p></li>";
-                            message_html += "<li><p>Tries left:  " + (total_tries - tries) + "</p></li>";
-                            message_html += "</ul>";
-                            $("#messages").html(message_html);
-                            //Not totally clear why we may get more checks than we asked for?
-                            if (tries >= total_tries || Object.keys(getData).length  >= checks_to_run.length) {
-                                message_html = "<p>Data integrity summaries completed.</p>";
-                                if (tries >= total_tries) {
-                                    message_html += "<p>Maximum tries exceeded. Some summaries may be missing.</p>";
-                                } else {
-                                    message_html += "<p>All scheduled summaries completed successfully.</p>";
-                                }
-
-                                $("#messages").html(message_html);
-                                document.getElementById("run_checks").disabled = false;
+                            if (Object.keys(getData).length > 0 || tries >= 10) {
                                 resolve(getData);
                             } else {
-                                renderSummariesTable(getData);
                                 tries++;
-                                setTimeout(checkForResponse, 5_000);
+                                setTimeout(checkForResponse, 1000);
                             }
                         })
                         .catch(error => {
-                            document.getElementById("run_checks").disabled = false;
                             console.error("Error checking for response:", error);
-                            reject(error);
                         });
                 }
-
                 checkForResponse();
             })
             .catch(error => {
                 console.error("Error making POST request:", error);
-                reject(error);
-            })
-    });
-}
-
-/* global dataIntegritySummaryResults */
-export async function runIntegrityChecks() {
-    console.log("Running integrity checks");
-    $("run_checks").disabled = true;
-    // eslint-disable-next-line no-global-assign
-    dataIntegritySummaryResults = await fetchAllSummaries();
-    Promise.all([dataIntegritySummaryResults])
-        .then(console.log("Executed summary results")).
-        catch((err) => {
-            console.log(err);
-            return false;
-        });
-
-    renderSummariesTable(dataIntegritySummaryResults);
-    $("run_checks").disabled = false;
-}
-
-
-function performPostAndGet(baseUrl, path) {
-    return new Promise((resolve, reject) => {
-        fetch(baseUrl + path, {
-            method: "GET",
-            credentials: "same-origin",
-            redirect: "follow",
-            headers: {
-                "Content-Type": "application/json",
-            },
-        }).then(response => response.json())
-            .then(initial_data => {
-                if (Object.keys(initial_data).length > 0) {
-                    resolve(initial_data);
-                } else {
-                    fetch(baseUrl + path, {
-                        method: "POST",
-                        credentials: "same-origin",
-                        redirect: "follow",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                    }).then(response => response.json())
-                        .then(() => {
-                            let tries = 0;
-                            function checkForResponse() {
-                                fetch(baseUrl + path, {
-                                    method: "GET",
-                                    credentials: "same-origin",
-                                    redirect: "follow",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                    },
-                                })
-                                    .then(response => response.json())
-                                    .then(getData => {
-                                        if (Object.keys(getData).length > 0 || tries >= 10) {
-                                            resolve(getData);
-                                        } else {
-                                            tries++;
-                                            setTimeout(checkForResponse, 1000);
-                                        }
-                                    })
-                                    .catch(error => {
-                                        console.error("Error checking for response:", error);
-                                        reject(error);
-                                    });
-                            }
-                            checkForResponse();
-                        })
-                        .catch(error => {
-                            console.error("Error making POST request:", error);
-                            reject(error);
-                        });
-                }
-            })
-            .catch(error => {
-                console.error("Error checking for response:", error);
-                reject(error);
             });
     });
 }
 /* global renderDetailsTable */
-export function runDetails(code) {
+export async function runDetails(code) {
     var path = "dataIntegrity/details?checks=" + code;
-    performPostAndGet(baseUrl, path)
+    $("#detailsReport").html("Please wait...");
+    $("#detailsReport").show();
+    await performPostAndGet(baseUrl, path)
         .then(data => {
             const name = Object.keys(data)[0];
             var this_check = data[name];
@@ -330,7 +452,6 @@ export function runDetails(code) {
             // eslint-disable-next-line no-unused-vars, no-undef
             currentDetails = this_check;
             var this_html = renderDetailsTable(this_check);
-            $("#detailsReport").show();
             $("#detailsButton").show();
             $("#detailsReport").html(this_html);
             $("#details").DataTable({ "paging": true, "searching": true, order: [[1, "asc"]] });

@@ -17,6 +17,12 @@ function emitDetailsButton(count, name) {
     }
 }
 
+function emitRefreshButton(name) {
+
+    return '<button onclick="refreshSingleSummary(\'' + name + '\')">Refresh</button>';
+
+}
+
 //* global $, DataTable *//
 export function renderSummariesTable(summaryObject) {
     console.log("Rendering summary table")
@@ -24,7 +30,7 @@ export function renderSummariesTable(summaryObject) {
 
     var html = "<div id='summary_table'><h2>Data Integrity Summaries</h2>";
     html += "<table id='summary' class='display' width='100%'>";
-    html += "<thead><tr><th>Section</th><th>Integrity check</th><th>Severity</th><th>Count</th><th>Percentage</th><th>Details</th></tr></thead><tbody>";
+    html += "<thead><tr><th>Section</th><th>Integrity check</th><th>Severity</th><th>Count</th><th>Percentage</th><th>Details</th><th>Refresh</th></tr></thead><tbody>";
 
     for (var i = 0; i < checks_name.length; i++) {
         var this_key = checks_name[i];
@@ -36,12 +42,13 @@ export function renderSummariesTable(summaryObject) {
         html += "<td>" + ((result?.count) ?? "-") + "</td>";
         html += "<td>" + ((parsePercentage(result.percentage)) ?? "N/A") + "</td>";
         html += "<td>" + emitDetailsButton(result.count, result.name) + "</td>";
+        html += "<td>" + emitRefreshButton(result.name) + "</td>";
         html += "</tr>";
     }
     html = html + "</tbody></table></div>"
 
     $("#summaryTable").html(html); // eslint-disable-line no-undef
-    $("#summary").DataTable({ "paging": true, "searching": true, order: [[1, 'asc']] }); // eslint-disable-line no-undef
+    $("#summary").DataTable({ "paging": true, "searching": true, order: [[3, 'desc']], stateSave: true }); // eslint-disable-line no-undef
 
 }
 
@@ -68,3 +75,12 @@ export function renderDetailsTable(detailsObject) {
     return html;
 }
 
+export function blinkingDots() {
+  let html = '<svg height="40" width="40" class="loader">';
+  html += '<circle class="dot" cx="10" cy="20" r="3" style="fill:grey;" />';
+  html += '<circle class="dot" cx="20" cy="20" r="3" style="fill:grey;" />';
+  html += '<circle class="dot" cx="30" cy="20" r="3" style="fill:grey;" />';
+  html += '</svg>';
+
+    return html;
+}
